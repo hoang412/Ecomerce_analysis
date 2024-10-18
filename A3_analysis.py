@@ -1,5 +1,7 @@
 import pandas as pd
 from scipy.spatial.distance import euclidean
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Load the dataset
 df = pd.read_csv('ecomerce_customer_data_cleaned.csv')
@@ -31,35 +33,69 @@ age_group_counts = df['AgeGroup'].value_counts(normalize=True) * 100
 print("\nAge Group Percentages:")
 print(age_group_counts)
 
+
+# Plot pie chart for age group percentages
+plt.figure(figsize=(8, 6))
+plt.pie(age_group_counts, labels=age_group_counts.index, autopct='%1.1f%%', startangle=90, colors=['lightcoral', 'skyblue', 'lightgreen'])
+plt.title('Age Group Distribution in Population')
+plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+plt.show()
+
 # Find the most popular favorite and second-favorite categories by age group
 def find_popular_categories(df, age_group):
     filtered_df = df[df['AgeGroup'] == age_group]
-    
+
     if filtered_df.empty:
         return None, None
 
-    # Handle missing categories
-    most_common_favorite = filtered_df['FavoriteCategory'].mode()[0] if not filtered_df['FavoriteCategory'].isna().all() else 'No Data'
-    most_common_second_favorite = filtered_df['SecondFavoriteCategory'].mode()[0] if not filtered_df['SecondFavoriteCategory'].isna().all() else 'No Data'
+    # Get the most common favorite category and its count
+    most_common_favorite = filtered_df['FavoriteCategory'].mode()[0] if not filtered_df['FavoriteCategory'].isna().all() else None
+    count_most_common = filtered_df['FavoriteCategory'].value_counts().get(most_common_favorite, 0)
 
-    return most_common_favorite, most_common_second_favorite
+    return most_common_favorite, count_most_common
+
 
 # Display popular categories by age group
 favorite_categories = {}
+category_counts = {}
 for age_group in age_ranges.keys():
-    fav_category, second_fav_category = find_popular_categories(df, age_group)
-    
+    fav_category, count = find_popular_categories(df, age_group)
+
     if fav_category is None:
         print(f"\nAge Group: {age_group}")
         print("No customers in this age group.")
     else:
         print(f"\nAge Group: {age_group}")
         print(f"Most Popular Favorite Category: {fav_category}")
-        print(f"Most Popular Second-Favorite Category: {second_fav_category}")
+        print(f"Count: {count}")
         favorite_categories[age_group] = fav_category
+        category_counts[age_group] = count
+
+# Plotting the age group percentages
 
 print("\nFavorite Categories by Age Group:")
 print(favorite_categories)
+
+
+# Plotting the most favorite category counts by age group
+age_groups = list(favorite_categories.keys())
+categories = list(favorite_categories.values())
+counts = list(category_counts.values())
+
+plt.figure(figsize=(8, 6))
+bars = plt.bar(age_groups, counts, color='skyblue')
+
+# Add category labels on top of the bars
+for bar, category in zip(bars, categories):
+    yval = bar.get_height()
+    plt.text(bar.get_x() + bar.get_width()/2, yval, category, ha='center', va='bottom')
+
+plt.xlabel('Age Group')
+plt.ylabel('Count')
+plt.title('Most Favorite Category by Age Group')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
 
 # Convert 'AverageOrderValue' and 'TotalPurchases' to numeric
 df['AverageOrderValue'] = pd.to_numeric(df['AverageOrderValue'], errors='coerce')
@@ -92,7 +128,7 @@ def calculate_similarity_for_age_group(target_category, age_group, feature_matri
     for category, vector in age_group_feature_matrix.iterrows():
         if category != target_category:
             distances[category] = euclidean(target_vector, vector[['AverageOrderValue', 'TotalPurchases']].values) # Select only numeric columns
-            
+
     # Sort and return top 10 categories by similarity
     sorted_distances = sorted(distances.items(), key=lambda x: x[1])
     return sorted_distances[:10]
@@ -106,3 +142,5 @@ for age_group, category in favorite_categories.items():
     else:
         for cat, dist in top_similar_categories:
             print(f"Category: {cat}, Distance: {dist:.4f}")
+
+
